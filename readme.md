@@ -6,9 +6,8 @@ A content-based movie recommendation web app built with Python and Streamlit, de
 
 ## 🔗 Live Demo
 
-Try it here:  
-https://vanshhari222-movie-recommender-system-rvo7wwhvyjwx74zjnwlutd.streamlit.app/
-
+Try it here:
+https://movie-recommender-system-rvo7wwhvyjwx74zjnwlutd.streamlit.app/
 ---
 
 ## 🛠️ Tech Stack
