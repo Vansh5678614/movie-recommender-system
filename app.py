@@ -1,14 +1,52 @@
 import pickle
 import streamlit as st
 import requests
+import pandas as pd
 
-# ✅ Fetch movie poster from TMDB
+# ✅ Download files from Hugging Face at runtime
+@st.cache_data
+def download_files():
+    try:
+        movie_list_url = "https://huggingface.co/datasets/vanshhari222/movie-recommender-assets/resolve/main/movie_list.pkl"
+        similarity_url = "https://huggingface.co/datasets/vanshhari222/movie-recommender-assets/resolve/main/similarity.pkl"
+
+        # Download and load movie list
+        movie_list_response = requests.get(movie_list_url, timeout=20)
+        movie_list_response.raise_for_status()
+        with open("movie_list.pkl", "wb") as f:
+            f.write(movie_list_response.content)
+        with open("movie_list.pkl", "rb") as f:
+            movies = pickle.load(f)
+
+        # Download and load similarity matrix
+        similarity_response = requests.get(similarity_url, timeout=20)
+        similarity_response.raise_for_status()
+        with open("similarity.pkl", "wb") as f:
+            f.write(similarity_response.content)
+        with open("similarity.pkl", "rb") as f:
+            similarity = pickle.load(f)
+
+        return movies, similarity
+
+    except Exception as e:
+        st.error(f"❌ Failed to download required files: {e}")
+        return None, None
+
+# ✅ Fetch movie poster from TMDB with error handling
 def fetch_poster(movie_id):
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=8265bd1679663a7ea12ac168da84d2e8&language=en-US"
-    data = requests.get(url).json()
-    poster_path = data.get('poster_path')
-    full_path = "https://image.tmdb.org/t/p/w500/" + poster_path
-    return full_path
+    try:
+        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=8265bd1679663a7ea12ac168da84d2e8&language=en-US"
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        poster_path = data.get('poster_path')
+
+        if poster_path:
+            return "https://image.tmdb.org/t/p/w500/" + poster_path
+        else:
+            return "https://via.placeholder.com/500x750?text=No+Image"
+    except:
+        return "https://via.placeholder.com/500x750?text=Error+Fetching+Poster"
 
 # ✅ Recommend top 5 similar movies
 def recommend(movie):
@@ -25,23 +63,22 @@ def recommend(movie):
     return recommended_movie_names, recommended_movie_posters
 
 # ✅ Streamlit UI
-st.header('Movie Recommender System')
+st.set_page_config(page_title="Movie Recommender", layout="wide")
+st.title('🎬 Movie Recommender System')
 
-# If files are in root folder:
-movies = pickle.load(open('movie_list.pkl', 'rb'))
-similarity = pickle.load(open('similarity.pkl', 'rb'))
+movies, similarity = download_files()
 
-movie_list = movies['title'].values
-selected_movie = st.selectbox(
-    "Type or select a movie from the dropdown",
-    movie_list
-)
+if movies is not None and similarity is not None:
+    movie_list = movies['title'].values
+    selected_movie = st.selectbox("Type or select a movie from the dropdown", movie_list)
 
-if st.button('Show Recommendation'):
-    recommended_movie_names, recommended_movie_posters = recommend(selected_movie)
+    if st.button('Show Recommendation'):
+        recommended_movie_names, recommended_movie_posters = recommend(selected_movie)
 
-    cols = st.columns(5)
-    for i in range(5):
-        with cols[i]:
-            st.text(recommended_movie_names[i])
-            st.image(recommended_movie_posters[i])
+        cols = st.columns(5)
+        for i in range(5):
+            with cols[i]:
+                st.image(recommended_movie_posters[i])
+                st.caption(recommended_movie_names[i])
+else:
+    st.warning("🔄 Please try reloading the app. Required files could not be downloaded.")
